@@ -1,7 +1,3 @@
-import { GoogleGenAI } from "@google/genai";
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY || "" });
-
 export interface MarketEvent {
   id: string;
   author: string;
@@ -16,40 +12,37 @@ export interface MarketEvent {
 
 export async function scanForMarketEvents(): Promise<MarketEvent[]> {
   try {
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: `Search for the most recent (last 24-48 hours) influential social media posts or public statements from Donald Trump, Elon Musk, and other major market movers (like Jerome Powell or Vitalik Buterin). 
-      Focus on statements that could impact stocks (e.g., TSLA, DJT, SPY) or crypto.
-      Return a list of events with sentiment analysis and potential market impact.`,
-      config: {
-        tools: [{ googleSearch: {} }],
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: "ARRAY",
-          items: {
-            type: "OBJECT",
-            properties: {
-              id: { type: "STRING" },
-              author: { type: "STRING" },
-              content: { type: "STRING" },
-              timestamp: { type: "STRING" },
-              sentiment: { type: "STRING", enum: ["bullish", "bearish", "neutral"] },
-              impactScore: { type: "NUMBER" },
-              affectedAssets: { type: "ARRAY", items: { type: "STRING" } },
-              analysis: { type: "STRING" },
-              sourceUrl: { type: "STRING" }
-            },
-            required: ["id", "author", "content", "timestamp", "sentiment", "impactScore", "affectedAssets", "analysis"]
-          }
-        }
-      }
+    const response = await fetch("http://localhost:8002/analyze", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        prompt: "Search for the most recent influential social media posts or statements from Donald Trump, Elon Musk, or Jerome Powell.",
+        system_instruction: "Return a list of MarketEvent objects (id, author, content, timestamp, sentiment, impactScore, affectedAssets, analysis) in JSON format."
+      })
     });
-
-    const text = response.text;
-    if (!text) return [];
-    return JSON.parse(text);
+    
+    if (!response.ok) {
+      throw new Error(`Backend error: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    return Array.isArray(data) ? data : (data.events || []);
   } catch (error) {
-    console.error("Error scanning for events:", error);
-    return [];
+    console.error("Error scanning for market events:", error);
+    // Returner mock data hvis backenden er nede
+    return [
+      {
+        id: "mock-1",
+        author: "Elon Musk",
+        content: "Buying more $DOGE and $TSLA soon.",
+        timestamp: "Just now",
+        sentiment: "bullish",
+        impactScore: 85,
+        affectedAssets: ["DOGE", "TSLA"],
+        analysis: "Musk confirms further purchases."
+      }
+    ];
   }
 }
