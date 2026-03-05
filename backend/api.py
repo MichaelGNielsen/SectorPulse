@@ -1,13 +1,13 @@
 import os
 import sys
 import json
+from datetime import datetime
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List, Optional, Any
 
-# Add shared utils to path
-sys.path.append(os.path.join(os.path.dirname(__file__), "../.."))
+# Importer fra den lokale kopi i agentens mappe (for standalone support)
 from shared.ai_utils.ai_base import AIBase
 
 app = FastAPI(title="SectorPulse API")
@@ -29,23 +29,41 @@ class AnalysisRequest(BaseModel):
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "agent": "SectorPulse"}
+    return {
+        "status": "online", 
+        "agent": "SectorPulse",
+        "timestamp": datetime.now().isoformat()
+    }
 
 @app.get("/latest")
 def get_latest_results():
     """Henter de nyeste resultater fra scanner-logs."""
     log_dir = os.path.join(os.path.dirname(__file__), "logs", "market")
     if not os.path.exists(log_dir):
-        return {"results": []}
+        return {
+            "status": "waiting_for_data",
+            "message": "Ingen markedshistorik fundet.",
+            "results": []
+        }
     
     files = [f for f in os.listdir(log_dir) if f.endswith(".json")]
     if not files:
-        return {"results": []}
+        return {
+            "status": "waiting_for_data",
+            "message": "Ingen markedsdata filer fundet.",
+            "results": []
+        }
     
     # Tag den nyeste fil
     latest_file = max([os.path.join(log_dir, f) for f in files], key=os.path.getmtime)
     with open(latest_file, "r") as f:
-        return json.load(f)
+        data = json.load(f)
+        return {
+            "status": "success",
+            "agent": "SectorPulse",
+            "timestamp": datetime.now().isoformat(),
+            "findings": data
+        }
 
 @app.post("/analyze")
 def analyze(request: AnalysisRequest):
@@ -54,8 +72,14 @@ def analyze(request: AnalysisRequest):
     user_prompt = request.prompt or "Analyser de seneste makro-økonomiske tendenser."
     
     res = ai.ask(user_prompt, system_instruction=system_prompt, force_json=True, prefer_local=True)
-    return res
+    
+    return {
+        "status": "success" if "error" not in res else "error",
+        "agent": "SectorPulse",
+        "timestamp": datetime.now().isoformat(),
+        "findings": res
+    }
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8002)
+    uvicorn.run(app, host="0.0.0.0", port=8000) # Internt altid 8000

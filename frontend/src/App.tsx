@@ -75,7 +75,7 @@ export default function App() {
             <Activity className="text-brand-accent w-6 h-6" />
           </div>
           <div>
-            <h1 className="font-bold text-lg tracking-tight">MARKET WATCH <span className="text-brand-accent">ALPHA</span></h1>
+            <h1 className="font-bold text-lg tracking-tight">SECTORPULSE <span className="text-brand-accent">MARKET AGENT</span></h1>
             <p className="text-[10px] font-mono text-slate-500 uppercase tracking-widest">Sentiment Analysis Engine v2.4</p>
           </div>
         </div>
@@ -365,7 +365,7 @@ export default function App() {
         </div>
         <div className="flex items-center gap-4">
           <span>LATENCY: 142MS</span>
-          <span>© 2026 MARKET WATCH ALPHA</span>
+          <span>© 2026 SECTORPULSE MARKET AGENT</span>
         </div>
       </footer>
     </div>
